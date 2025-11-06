@@ -1,0 +1,20 @@
+codebase_genius/
+├── .gitignore          # Ignores .venv, __pycache__, .DS_Store, *.jac.trans, etc.
+├── requirements.txt    # Lists all Python needs (jac-lang, gitpython, tree-sitter, uvicorn)
+├── .env.example        # Example environment variables (like OPENAI_API_KEY)
+├── outputs/            # Generated documentation will go here
+│   └── (repository_name)/
+│       └── docs.md
+├── src/                # All our Jac and Python source code
+│   ├── __init__.py
+│   ├── main.jac        # Main entry point, sets up the API server
+│   ├── agents/         # Each agent gets its own file for clarity
+│   │   ├── __init__.py
+│   │   ├── supervisor.jac   # 1. CodeGenius (Supervisor)
+│   │   ├── mapper.jac       # 2. RepoMapper
+│   │   ├── analyzer.jac     # 3. CodeAnalyzer
+│   │   └── genie.jac        # 4. DocGenie
+│   └── utils/          # Helper Python modules
+│       ├── __init__.py
+│       └── parser.py     # Python code for Git cloning & Tree-sitter parsing
+└── README.md           # Your project's README (how to run *your* system)
