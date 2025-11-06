@@ -1,0 +1,52 @@
+# --- Python basics ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.venv/
+venv/
+env/
+ENV/
+
+# --- Jac transpilation artifacts ---
+*.jac.trans
+*.jac.ir
+*.jac.ast
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+
+# --- Logs & temp ---
+*.log
+*.tmp
+*.temp
+*.out
+
+# --- Virtual environments ---
+.venv/
+.venv*/
+pip-wheel-metadata/
+
+# --- Node / frontend (if any) ---
+node_modules/
+dist/
+build/
+
+# --- Outputs ---
+outputs/*
+
+# --- IDE settings ---
+.vscode/
+.idea/
+*.iml
+
+# --- Coverage / testing ---
+.coverage
+htmlcov/
+.pytest_cache/

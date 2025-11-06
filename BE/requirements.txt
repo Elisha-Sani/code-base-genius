@@ -1,0 +1,6 @@
+jaclang
+jac-cloud
+byllm
+gitpython
+uvicorn
+google-generativeai>=0.3.0

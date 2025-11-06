@@ -1,4 +1,0 @@
-jaclang
-byllm
-gitpython
-uvicorn
