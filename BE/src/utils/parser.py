@@ -6,89 +6,76 @@ from git.exc import GitCommandError
 from tree_sitter import Language, Parser
 
 # Load the Python grammar (we'll need to add other languages later)
-try:
-    PY_LANGUAGE = Language("build/my-languages.so", "python")
-except:
-    Language.build_library(
-      'build/my-languages.so',
-      ['vendor/tree-sitter-python'] # Path to the grammar repo (you'll need to git clone this)
-    )
-    PY_LANGUAGE = Language("build/my-languages.so", "python")
+Language.build_library(
+  'build/my-languages.so', # Output file
+  [
+    'vendor/tree-sitter-python',
+    'vendor/tree-sitter-javascript',
+  ]
+)
+# --- Load Each Language Grammar ---
+PY_LANG = Language("build/my-languages.so", "python")
+JS_LANG = Language("build/my-languages.so", "javascript")
 
-PARSER = Parser()
-PARSER.set_language(PY_LANGUAGE)
-
-# ⬇️ --- ADD THIS NEW FUNCTION --- ⬇️
-
-def extract_code_elements(file_path: str) -> dict:
+def extract_python_elements(file_path: str) -> dict:
     """
-    Parses a Python file and extracts classes and functions.
+    Parses a Python file and extracts classes, methods, and functions.
     """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            source_code = f.read()
-    except Exception:
-        return {} # Return empty if file can't be read
-
-    tree = PARSER.parse(bytes(source_code, "utf8"))
+    parser = Parser()
+    parser.set_language(PY_LANG)
+    
+    code_content = read_file_content(file_path)
+    if not code_content:
+        return {"classes": [], "functions": []}
+    
+    tree = parser.parse(bytes(code_content, "utf8"))
     root_node = tree.root_node
     
-    elements = {
-        "classes": [],
-        "functions": []
-    }
+    elements = {"classes": [], "functions": []}
 
-    # This query finds all top-level functions and classes
-    query_str = """
-    (class_definition name: (identifier) @class.name body: (block . (function_definition name: (identifier) @method.name body: (block) @method.body) @method.def))
-    (function_definition name: (identifier) @function.name body: (block) @function.body)
-    """
+    # Query to find all top-level classes and functions
+    class_query = PY_LANG.query("(class_definition name: (identifier) @name body: (block) @body)")
+    func_query = PY_LANG.query("(function_definition name: (identifier) @name body: (block) @body)")
     
-    query = PY_LANGUAGE.query(query_str)
-    captures = query.captures(root_node)
-    
-    # We'll need a way to store methods found so we don't add them as top-level functions
-    processed_methods = set()
-
-    # Find classes and their methods
-    for node, capture_name in captures:
-        if capture_name == "class.name":
-            class_name = node.text.decode('utf8')
-            class_methods = []
+    # Capture classes
+    for capture in class_query.captures(root_node):
+        if capture[1] == "name":
+            class_name = capture[0].text.decode('utf8')
+            class_body_node = next(c[0] for c in class_query.captures(root_node) if c[1] == "body" and c[0].parent == capture[0].parent)
             
-            # Find methods within this class's body
-            for sub_node, sub_capture in captures:
-                if sub_capture == "method.def" and sub_node.parent.parent == node.parent: # Check if it's a method of *this* class
-                    method_name_node = next(c[0] for c in captures if c[1] == "method.name" and c[0].parent == sub_node)
-                    method_body_node = next(c[0] for c in captures if c[1] == "method.body" and c[0].parent == sub_node)
-                    
-                    method_name = method_name_node.text.decode('utf8')
-                    method_body = method_body_node.text.decode('utf8')
-                    
-                    class_methods.append({
-                        "name": method_name,
-                        "code": method_body
+            methods = []
+            # Query for methods *within* this class
+            method_query = PY_LANG.query("(function_definition name: (identifier) @meth.name body: (block) @meth.body)")
+            for meth_capture in method_query.captures(class_body_node):
+                if meth_capture[1] == "meth.name":
+                    methods.append({
+                        "name": meth_capture[0].text.decode('utf8'),
+                        "code": meth_capture[0].parent.text.decode('utf8') # Get full function code
                     })
-                    processed_methods.add(method_name)
-
+            
             elements["classes"].append({
                 "name": class_name,
-                "methods": class_methods
+                "code": capture[0].parent.text.decode('utf8'), # Get full class code
+                "methods": methods
             })
 
-    # Find top-level functions (and ignore methods we already found)
-    for node, capture_name in captures:
-        if capture_name == "function.name":
-            func_name = node.text.decode('utf8')
-            if func_name not in processed_methods:
-                body_node = next(c[0] for c in captures if c[1] == "function.body" and c[0].parent == node.parent)
-                func_body = body_node.text.decode('utf8')
-                elements["functions"].append({
-                    "name": func_name,
-                    "code": func_body
-                })
-
+    # Capture top-level functions
+    for capture in func_query.captures(root_node):
+        # Ensure it's a top-level function, not a method
+        if capture[0].parent.parent.type == "module":
+            elements["functions"].append({
+                "name": capture[0].text.decode('utf8'),
+                "code": capture[0].parent.text.decode('utf8') # Get full function code
+            })
+            
     return elements
+
+# --- We would add more specialist functions below ---
+def extract_js_elements(file_path: str) -> dict:
+    # (Similar logic but with JS_LANG and a JS query)
+    print(f"JavaScript parser not yet implemented for {file_path}")
+    return {"classes": [], "functions": []}
+
 
 # -- Git Operations --
 def clone_repo(url: str) -> str | None:
