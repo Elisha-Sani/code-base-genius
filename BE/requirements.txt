@@ -4,6 +4,6 @@ byllm
 gitpython
 uvicorn
 google-generativeai>=0.3.0
-tree-sitter
-tree-sitter-python
-tree-sitter-javascript
+# tree-sitter==0.20.1
+# tree-sitter-python
+# tree-sitter-javascript
