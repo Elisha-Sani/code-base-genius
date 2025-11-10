@@ -1,15 +1,13 @@
 import utils.parser as git_parser;
 import os;
 
-# 1. Only import 'Model'. 'by' is a keyword, not an import.
 import from byllm.lib { Model }
 
 # Define Gemini model globally
 glob gemini_llm = Model(model_name="gemini/gemini-2.0-flash");
 
-# --- THIS IS THE FIX (based on your docs) ---
-# We define a function that is powered by Gemini.
-# The 'by' keyword is followed by our global model variable.
+
+# readme summarizer
  """You are an expert technical writer. Summarize this README into a concise, one paragraph project overview. Focus on what the project *does and the main technologies used* Example:This project is a personal portfolio website built using TypeScript, React, and CSS. It showcases the developer’s skills, projects, and contact information in a clean, responsive layout.."""
 def summarize_readme(content: str) -> str by gemini_llm();
 
@@ -41,6 +39,7 @@ obj RepoMap {
     has file_tree: list[str];
     has summary: str;
     has local_path: str;
+    has result: dict;
 }
 
 # Repo Mapper Walkek
@@ -57,7 +56,7 @@ walker RepoMapper {
                
         if not repo_path {
             print("Error: Repository could not be cloned.");
-            report {"status": "error", "message": "Repo could not be cloned"};
+            return {"status": "error", "message": "Repo could not be cloned"};
             return;
         }
 
@@ -92,7 +91,7 @@ walker RepoMapper {
                 "content": content
             });
         }
-        report {
+        self.result = {
             "status": "success",
             "data": {
                 "repo": self.url,

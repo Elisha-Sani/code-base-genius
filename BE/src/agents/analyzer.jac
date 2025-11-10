@@ -1,4 +1,3 @@
-## This is a Repo Analyzer
 import os;
 import utils.parser as git_parser;
 import from byllm.lib { Model }
@@ -12,23 +11,24 @@ def summarize_file(content: str) -> str by gemini_llm();
 def extract_top_symbols(content: str) -> str by gemini_llm();
 
 walker RepoAnalyzer {
-    has report_data: dict;
+    has return_data: dict;
+    has result: dict = {};
 
     obj __specs__ {
         static has auth: bool = False;
     }
 
     can analyze with `root entry {
-        if not self.report_data {
+        if not self.return_data {
             print("No mapper data provided");
-            report {"status": "error", "message": "missing mapper data"};
+            return {"status": "error", "message": "missing mapper data"};
             return;
         }
 
-        repo = self.report_data.get("repo", "unknown");
-        local_path = self.report_data.get("local_path", "");
-        files = self.report_data.get("files", []);
-        summary = self.report_data.get("summary", "");
+        repo = self.return_data.get("repo", "unknown");
+        local_path = self.return_data.get("local_path", "");
+        files = self.return_data.get("files", []);
+        summary = self.return_data.get("summary", "");
 
         # counters and outputs
         lang_count = {};
@@ -112,14 +112,8 @@ walker RepoAnalyzer {
                     }
                 }
             } else {
-                # --- FIX ---
-                # This was also blank in your output, let's fix it
                 doc_entry["summary"] = "Empty file or placeholder";
             }
-
-            # These final checks are correct, as they check Jac types
-            # if type(doc_entry["summary"]) != "str" { doc_entry["summary"] = ""; }
-            # if type(doc_entry["symbols"]) != "list" { doc_entry["symbols"] = []; }
 
             docs.append(doc_entry);
         }
@@ -133,7 +127,7 @@ walker RepoAnalyzer {
             "by_language": lang_count
         };
 
-        report {
+        self.result = {
             "status": "success",
             "data": {
                 "index": index,

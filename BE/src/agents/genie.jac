@@ -11,7 +11,7 @@ a code repository analysis. Your job is to generate a complete, high-quality
 Markdown documentation file based *only* on that JSON data.
 
 The document MUST include the following sections:
-1.  **Header**: '# Codebase Genius Report: <repo_name>'
+1.  **Header**: '# Codebase Genius return: <repo_name>'
 2.  **Project Overview**: (Use the 'summary' from the JSON)
 3.  **Installation and Usage**: (Infer this from the 'summary' or file types)
 4.  **Repository Insights**: (Create a Markdown table for 'by_language' stats)
@@ -30,12 +30,13 @@ walker DocGenie {
 
     obj __specs__ {
         static has auth: bool = False;
+        has result: dict = {};
     }
 
     can generate_docs with `root entry {
         if (not self.analysis_data) or (self.analysis_data == {}) {
             print("Error: DocGenie received no analysis_data.");
-            report {"status": "error", "message": "Missing analysis data"};
+            return {"status": "error", "message": "Missing analysis data"};
             return;
         }
 
@@ -55,11 +56,11 @@ walker DocGenie {
 
         if type(md_content) == "dict" {
             print(f"Genie: CRITICAL LLM FAILURE: {md_content}");
-            report {"status": "error", "message": "LLM failed to generate document"};
+            self.result = {"status": "error", "message": "LLM failed to generate document"};
             return;
         }
 
-        # --- 3. Save and Report ---
+        # --- 3. Save and return ---
         save_path = os.path.join(self.output_dir, repo_name);
         os.makedirs(save_path, exist_ok=True);
         
@@ -71,14 +72,14 @@ walker DocGenie {
                 f.write(md_content);
             }
             print(f"DocGenie: Successfully saved documentation to {final_path}");
-            report {
+            self.result = {
                 "status": "success",
                 "markdown_file": final_path,
                 "content_length": len(md_content)
             };
         } except FileError as e { 
             print(f"Error: DocGenie failed to write file to {final_path}. Details: {e}");
-            report {
+            self.result = {
                 "status": "error",
                 "message": "Failed to write documentation file.",
                 "path": final_path

@@ -1,25 +1,8 @@
 import os
 import tempfile
 import git
+import shutil
 from git.exc import GitCommandError
-
-# from tree_sitter_languages import get_language, get_parser
-# from tree_sitter import Query
-
-# # --- Tree-sitter setup ---
-# PY_LANG = get_language("python")
-# JS_LANG = get_language("javascript")
-
-# PY_PARSER = get_parser("python")
-# JS_PARSER = get_parser("javascript")
-
-# def read_file_content(file_path: str) -> str:
-#     try:
-#         with open(file_path, "r", encoding="utf8") as f:
-#             return f.read()
-#     except Exception:
-#         return ""
-
 
 # --- Git Operations ---
 def clone_repo(url: str) -> str | None:
@@ -57,3 +40,13 @@ def read_file_content(file_path: str) -> str | None:
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
         return None
+    
+def cleanup_repo(path: str) -> None:
+    """Remove the temporary cloned repo directory."""
+    if not path:
+        return
+    try:
+        shutil.rmtree(path, ignore_errors=True)
+        print(f"Cleaned up repo at {path}")
+    except Exception as e:
+        print(f"Error cleaning up repo at {path}: {e}")
