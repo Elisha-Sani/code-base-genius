@@ -5,10 +5,16 @@ __pycache__/
 *.pyd
 *.so
 *.egg-info/
+*.egg
+*.whl
+
+# --- Virtual environments ---
 .venv/
 venv/
 env/
 ENV/
+.venv*/
+pip-wheel-metadata/
 
 # --- Jac transpilation artifacts ---
 *.jac.trans
@@ -28,18 +34,13 @@ Thumbs.db
 *.temp
 *.out
 
-# --- Virtual environments ---
-.venv/
-.venv*/
-pip-wheel-metadata/
-
 # --- Node / frontend (if any) ---
 node_modules/
 dist/
 build/
 
 # --- Outputs ---
-outputs/*
+outputs/
 
 # --- IDE settings ---
 .vscode/
@@ -50,3 +51,16 @@ outputs/*
 .coverage
 htmlcov/
 .pytest_cache/
+.cache/
+nosetests.xml
+coverage.xml
+
+# --- Environment files ---
+.env
+.env.*
+*.env
+
+# --- Misc ---
+*.lock
+*.tar.gz
+*.zip
