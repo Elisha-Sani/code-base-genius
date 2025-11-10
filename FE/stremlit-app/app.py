@@ -1,234 +1,177 @@
-"""Streamlit frontend for Code Base Genius documentation generator."""
-
 import streamlit as st
 import requests
 import time
-import json
+from datetime import datetime
 
-# Configure the page
+# --- 1. Configuration & Setup ---
+BASE_URL = "http://localhost:8000"
+GENERATE_DOCS_ENDPOINT = f"{BASE_URL}/walker/generate_docs"
+
 st.set_page_config(
     page_title="Codebase Genius",
-    page_icon="📚",
-    layout="wide"
+    page_icon="🧞",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Backend API configuration
-API_BASE_URL = "http://localhost:8000"
+# Initialize session state keys
+for key, default in {
+    "documentation": None,
+    "repo_name": None,
+    "history": []
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-def call_walker(walker_name: str, payload: dict) -> dict:
-    """Call a Jac walker via the REST API."""
-    url = f"{API_BASE_URL}/walker/{walker_name}"
-    try:
-        response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"API Error: {str(e)}")
-        return None
+# --- 2. Dark Theme CSS ---
+st.markdown("""
+    <style>
+    body { background-color: #1f2937; color: #f9fafb; }
+    h1, h2, h3 { color: #a5b4fc; }
+    [data-testid="stSidebar"] { background-color: #111827; color: #f9fafb; }
+    .stButton button {
+        background-color: #4F46E5; color: #ffffff;
+        border-radius: 6px; padding: 0.6rem 1rem; font-weight: 600;
+        transition: 0.3s ease;
+    }
+    .stButton button:hover {
+        background-color: #6366F1; color: #ffffff;
+        transform: scale(1.02);
+    }
+    .history-item:hover {
+        background-color: #374151; color: #f9fafb;
+        border-radius: 8px; transition: 0.3s ease; padding-left: 4px;
+    }
+    input[type="text"] {
+        background-color: #ffffff !important; color: #111827 !important;
+        border-radius: 6px; padding: 0.5rem;
+    }
+    [data-testid="stForm"] {
+        background-color: #111827;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-def initialize_session_state():
-    """Initialize session state variables."""
-    if "job_id" not in st.session_state:
-        st.session_state.job_id = None
-    if "status" not in st.session_state:
-        st.session_state.status = None
-    if "logs" not in st.session_state:
-        st.session_state.logs = []
-    if "markdown_content" not in st.session_state:
-        st.session_state.markdown_content = None
-    if "github_url" not in st.session_state:
-        st.session_state.github_url = ""
+# --- 3. Sidebar ---
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/6134/6134346.png", width=60)
+    st.title("Codebase Genius")
+    st.caption("AI-powered documentation generator")
+    st.divider()
 
-def start_generation(github_url: str):
-    """Start the documentation generation job."""
-    with st.spinner("Starting documentation generation..."):
-        result = call_walker("generate_docs", {"github_url": github_url})
-        
-        if result and "reports" in result and len(result["reports"]) > 0:
-            report = result["reports"][0]
-            st.session_state.job_id = report.get("job_id")
-            st.session_state.status = report.get("status", "RUNNING")
-            st.session_state.logs = []
-            st.session_state.markdown_content = None
-            st.success(f"Job started! Job ID: {st.session_state.job_id}")
-        else:
-            st.error("Failed to start job. Please try again.")
+    st.subheader("🔗 Quick Links")
+    st.page_link("https://github.com/Elisha-Sani/code-base-genius", label="Project GitHub Repo", icon="🤖")
+    st.page_link("https://www.jac-lang.org/learn/examples/rag_chatbot", label="Jac + Streamlit Example", icon="🔗")
+    st.page_link("https://www.jac-lang.org/", label="JacLang Homepage", icon="🚀")
 
-def poll_job_status():
-    """Poll the job status and update session state."""
-    if not st.session_state.job_id:
-        return
-    
-    result = call_walker("get_job_status", {"job_id": st.session_state.job_id})
-    
-    if result and "reports" in result and len(result["reports"]) > 0:
-        report = result["reports"][0]
-        new_status = report.get("status", "UNKNOWN")
-        
-        # Update status
-        if new_status in ["SUCCESS", "FAILURE", "COMPLETED"]:
-            st.session_state.status = new_status
-        elif new_status == "RUNNING":
-            st.session_state.status = "RUNNING"
-        else:
-            st.session_state.status = new_status
+    st.divider()
+    st.subheader("🕓 Generation History")
 
-def get_job_logs():
-    """Fetch and return the latest job logs."""
-    if not st.session_state.job_id:
-        return []
-    
-    result = call_walker("get_job_logs", {"job_id": st.session_state.job_id})
-    
-    if result and "reports" in result and len(result["reports"]) > 0:
-        report = result["reports"][0]
-        return report.get("logs", [])
-    return []
+    if not st.session_state.history:
+        st.caption("Your generated docs will appear here.")
+    else:
+        for item in st.session_state.history:
+            st.markdown(
+                f"<div class='history-item'>📂 <b>{item['repo_name']}</b></div>",
+                unsafe_allow_html=True
+            )
+            st.caption(f"{item['timestamp'].strftime('%Y-%m-%d %I:%M:%S %p')}")
 
-def get_job_result():
-    """Fetch the final job result and markdown content."""
-    if not st.session_state.job_id:
-        return None
-    
-    result = call_walker("get_job_result", {"job_id": st.session_state.job_id})
-    
-    if result and "reports" in result and len(result["reports"]) > 0:
-        report = result["reports"][0]
-        if report.get("status") == "SUCCESS":
-            return report.get("markdown_content")
-        else:
-            st.error(f"Error getting result: {report.get('message', 'Unknown error')}")
-    return None
+# --- 4. Hero Section ---
+st.markdown("""
+    <div style="background:#1f2937;
+                padding:2rem;border-radius:12px;text-align:center;
+                border:1px solid #374151;">
+        <h1 style="margin:0; color:#a5b4fc;">Welcome, Developer 👋</h1>
+        <p style="font-size:1.2rem; color:#e5e7eb;">
+            Turn any public GitHub repository into brilliant documentation.
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
-def main():
-    """Main Streamlit application."""
-    initialize_session_state()
-    
-    # Title and description
-    st.title("Codebase Genius 📚")
-    st.markdown("Generate comprehensive documentation from any GitHub repository")
-    
-    # Sidebar for configuration
-    with st.sidebar:
-        st.header("Settings")
-        st.info("Backend API: " + API_BASE_URL)
-        
-        if st.button("Reset"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
-    
-    # Main input area
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        github_url = st.text_input(
-            "GitHub Repository URL",
-            value=st.session_state.github_url,
-            placeholder="https://github.com/username/repository",
-            help="Enter the full URL of the GitHub repository you want to document"
+st.divider()
+
+# --- 5. Input Form ---
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    with st.form("repo_form"):
+        st.markdown("### 1. Enter Repository URL")
+        repo_url = st.text_input(
+            "Public GitHub URL",
+            placeholder="https://github.com/username/repo",
+            label_visibility="collapsed"
         )
-        st.session_state.github_url = github_url
-    
-    with col2:
-        st.write("")  # Spacing
-        st.write("")  # Spacing
-        generate_button = st.button(
-            "Generate Documentation",
-            type="primary",
-            disabled=(not github_url or st.session_state.status == "RUNNING"),
+        st.caption("Paste a valid public GitHub repository link.")
+        submitted = st.form_submit_button("⚡ Generate Documentation", use_container_width=True)
+
+# --- 6. Logic & Processing ---
+if submitted and repo_url:
+    st.session_state.documentation = None
+    st.session_state.repo_name = None
+
+    progress = st.progress(0)
+    for pct in range(0, 101, 20):
+        progress.progress(pct)
+        time.sleep(0.1)
+
+    with st.spinner("🤖 Agents at work... This may take a few minutes."):
+        try:
+            payload = {"repo_url": repo_url}
+            response = requests.post(GENERATE_DOCS_ENDPOINT, json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("success"):
+                generated_doc = result.get("report", [{}])[0]
+
+                if isinstance(generated_doc, str):
+                    st.session_state.documentation = generated_doc
+                    st.session_state.repo_name = repo_url.rstrip("/").split("/")[-1]
+
+                    st.session_state.history.insert(0, {
+                        "repo_name": st.session_state.repo_name,
+                        "timestamp": datetime.now()
+                    })
+                    st.success("✅ Documentation successfully generated!")
+
+                elif isinstance(generated_doc, dict) and "error" in generated_doc:
+                    st.error(f"Agent Error: {generated_doc['error']}")
+                else:
+                    st.error("Unexpected response format from the server.")
+            else:
+                st.error("The Jac walker did not complete successfully.")
+                with st.expander("Debug Details"):
+                    st.json(result)
+
+        except requests.exceptions.RequestException:
+            st.error(f"Connection Error: Could not connect to backend at `{GENERATE_DOCS_ENDPOINT}`.")
+
+# --- 7. Results Display ---
+if st.session_state.get("documentation"):
+    st.divider()
+    col_header, col_dl, col_copy = st.columns([4, 1, 1])
+
+    with col_header:
+        st.header(f"📘 Documentation: {st.session_state.repo_name}")
+    with col_dl:
+        st.download_button(
+            label="⬇️ Download .md",
+            data=st.session_state.documentation,
+            file_name=f"{st.session_state.repo_name}_docs.md",
+            mime="text/markdown",
             use_container_width=True
         )
-    
-    # Handle generate button click
-    if generate_button and github_url:
-        start_generation(github_url)
-        st.rerun()
-    
-    # Display status and handle polling
-    if st.session_state.status == "RUNNING":
-        st.divider()
-        st.subheader("📊 Generation Progress")
-        
-        # Create containers for dynamic updates
-        status_container = st.empty()
-        log_container = st.empty()
-        
-        # Polling loop
-        max_polls = 200  # Maximum number of polls (10 minutes at 3s intervals)
-        poll_count = 0
-        
-        while st.session_state.status == "RUNNING" and poll_count < max_polls:
-            with status_container:
-                st.info(f"🔄 Pipeline is running... (Poll {poll_count + 1})")
-            
-            # Update status
-            poll_job_status()
-            
-            # Get and display logs
-            logs = get_job_logs()
-            if logs:
-                st.session_state.logs = logs
-                with log_container:
-                    st.markdown("**Recent Logs:**")
-                    log_text = "\n".join([
-                        f"[{log.get('timestamp', 'N/A')}] {log.get('message', '')}"
-                        for log in logs[-20:]  # Show last 20 logs
-                    ])
-                    st.code(log_text, language="log")
-            
-            # Check if status changed
-            if st.session_state.status != "RUNNING":
-                break
-            
-            # Wait before next poll
-            time.sleep(3)
-            poll_count += 1
-        
-        # Force a rerun to update UI
-        if st.session_state.status != "RUNNING":
-            st.rerun()
-    
-    # Display success result
-    elif st.session_state.status in ["SUCCESS", "COMPLETED"]:
-        st.divider()
-        st.success("✅ Documentation generated successfully!")
-        
-        if st.session_state.markdown_content is None:
-            with st.spinner("Fetching documentation..."):
-                st.session_state.markdown_content = get_job_result()
-        
-        if st.session_state.markdown_content:
-            st.subheader("📄 Generated Documentation")
-            
-            # Add download button
-            st.download_button(
-                label="Download Markdown",
-                data=st.session_state.markdown_content,
-                file_name="documentation.md",
-                mime="text/markdown"
-            )
-            
-            # Display the markdown content
-            st.markdown("---")
-            st.markdown(st.session_state.markdown_content)
-        else:
-            st.warning("Documentation was generated but content could not be retrieved.")
-    
-    # Display failure state
-    elif st.session_state.status == "FAILURE":
-        st.divider()
-        st.error("❌ Documentation generation failed!")
-        
-        if st.session_state.logs:
-            st.subheader("Error Logs")
-            log_text = "\n".join([
-                f"[{log.get('timestamp', 'N/A')}] {log.get('message', '')}"
-                for log in st.session_state.logs
-            ])
-            st.code(log_text, language="log")
-        
-        st.info("Please check the logs above for details or try again with a different repository.")
+    with col_copy:
+        st.button("📋 Copy", use_container_width=True)
 
-if __name__ == "__main__":
-    main()
+    tab1, tab2 = st.tabs(["📄 Rendered View", "📝 Raw Markdown"])
+
+    with tab1:
+        with st.container(height=600, border=True):
+            st.markdown(st.session_state.documentation)
+
+    with tab2:
+        st.code(st.session_state.documentation, language="markdown", line_numbers=True)

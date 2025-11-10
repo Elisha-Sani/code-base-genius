@@ -49,8 +49,9 @@ def detect_language_from_path(path: str) -> str {
             print(f"Language detection failed for {path}: {guessed}");
             return "unknown";
         }
-        
-        return guessed.strip().lower() if guessed else "unknown";
+        if guessed {
+        return guessed.strip().lower();
+        }
     }
 }
 
