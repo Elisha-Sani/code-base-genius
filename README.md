@@ -92,12 +92,7 @@ code-base-genius/
 │   └── README.md                # Backend-specific readme
 │
 ├── FE/                          # Frontend (Next.js 16)
-│   ├── app/                     # Next.js App Router pages
-│   ├── components/              # React components (MarkdownViewer, FileTree, etc.)
-│   ├── public/                  # Static assets
-│   ├── package.json
-│   ├── tailwind.config.js
-│   └── README.md                # Frontend-specific readme
+│                 # Frontend-specific readme
 │
 ├── outputs/                     # Generated documentation
 │   └── <repo_name>/docs.md
