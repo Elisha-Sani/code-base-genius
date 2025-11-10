@@ -7,7 +7,6 @@ import from byllm.lib { Model }
 glob gemini_llm = Model(model_name="gemini/gemini-2.0-flash");
 
 
-# readme summarizer
  """You are an expert technical writer. Summarize this README into a concise, one paragraph project overview. Focus on what the project *does and the main technologies used* Example:This project is a personal portfolio website built using TypeScript, React, and CSS. It showcases the developer’s skills, projects, and contact information in a clean, responsive layout.."""
 def summarize_readme(content: str) -> str by gemini_llm();
 
@@ -45,6 +44,7 @@ obj RepoMap {
 # Repo Mapper Walkek
 walker RepoMapper {
     has url: str;
+    has result: dict = {};
 
     obj __specs__ {
         static has auth: bool = False;
